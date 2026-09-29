@@ -12,6 +12,9 @@ func Migrate() {
 	err := database.DB.AutoMigrate(
 		&models.Division{},
 		&models.Employee{},
+		&models.User{},
+		&models.Item{},
+		&models.LoanDetail{},
 	)
 	if err != nil {
 		panic("failed to migrate")
