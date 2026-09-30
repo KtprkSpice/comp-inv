@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"inventory/internal/database"
 	"inventory/internal/models"
+	"inventory/internal/seeder"
 )
 
 func Migrate() {
@@ -20,5 +21,8 @@ func Migrate() {
 		panic("failed to migrate")
 	}
 
+	seeder.SeedDivision()
+	seeder.EmployeeSeeder()
+	seeder.SeedUser()
 	fmt.Println("Database Migration Completed")
 }
