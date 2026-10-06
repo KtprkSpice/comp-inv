@@ -14,4 +14,12 @@ func SetupRoutes(router *gin.Engine) {
 		auth.POST("/login", handler.Login)
 		auth.GET("/me", handler.Me)
 	}
+
+	employee := api.Group("/employee")
+	{
+		employee.POST("/create", handler.CreateEmployee)
+		employee.GET("/get", handler.GetEmployee)
+		employee.PUT("/:id", handler.UpdateEmployee)
+		employee.DELETE("/:id", handler.DeleteEmployee)
+	}
 }

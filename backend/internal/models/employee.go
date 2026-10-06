@@ -20,6 +20,7 @@ type Employee struct {
 	DivisionID uint `gorm:"not null" json:"division_id"`
 	Division  Division       `gorm:"foreignKey:DivisionID" json:"division"`
 	Status    Status         `gorm:"type:enum('active','inactive');default:'active'" json:"status"`
+	User *User `gorm:"foreignKey:EmployeeID" json:"user"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"deleted_at"`
