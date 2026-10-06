@@ -6,8 +6,9 @@ export default function Navbar({
   activeMenu = "Dashboard",
 }) {
   const menuItems = [
-    { name: "Dashboard", href: "#dashboard" },
-    { name: "Barang / Inventaris", href: "#inventory" },
+    { name: "Dashboard", href: "/" },
+    { name: "Karyawan", href: "/employee" },
+    { name: "Barang / Inventaris", href: "/item" },
     { name: "Laporan", href: "#reports" },
     { name: "Pengaturan", href: "#settings" },
   ];

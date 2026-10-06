@@ -1,0 +1,796 @@
+import Navbar from "../../components/navbar";
+import Footer from "../../components/footer";
+import { useEffect, useMemo, useState } from "react";
+import {
+  AlertCircle,
+  ArrowInUpSquareHalf,
+  ArrowLeft,
+  ArrowRight,
+  CheckShield,
+  Container,
+  CrossCircle,
+  DotsVertical,
+  Edit,
+  Plus,
+  RefreshCw,
+  RotateCw,
+  Search,
+  Widget,
+} from "@boxicons/react";
+const INITIAL_ITEMS = [
+  {
+    id: "1",
+    sku: "INV-IT-001",
+    name: "Laptop ThinkPad T14 Gen 3",
+    spec: "Core i7-1260P • 16GB DDR4 • SSD 512GB NVMe • Garansi Resmi Lenovo",
+    category: "IT & Hardware",
+    stock: 42,
+    maxStock: 50,
+    status: "Tersedia",
+  },
+  {
+    id: "2",
+    sku: "INV-EL-014",
+    name: 'Monitor Dell UltraSharp 27" 4K (U2723QE)',
+    spec: "IPS Black Tech • USB-C Hub 90W PD • 100% sRGB • DisplayPort 1.4",
+    category: "Elektronik",
+    stock: 18,
+    maxStock: 30,
+    status: "Tersedia",
+  },
+  {
+    id: "3",
+    sku: "INV-FN-088",
+    name: "Kursi Ergonomis Mesh Pro",
+    spec: "Lumbar Support Dinamis • 3D Armrest • Gaslift Kelas 4 BIFMA Certified",
+    category: "Furnitur Kantor",
+    stock: 7,
+    maxStock: 25,
+    status: "Stok Menipis",
+  },
+  {
+    id: "4",
+    sku: "INV-AK-023",
+    name: "Keyboard Mekanikal Wireless",
+    spec: "Hot-Swappable Red Switch • Bluetooth 5.2 / 2.4GHz • Layout 75% ANSI",
+    category: "Aksesoris Komputer",
+    stock: 29,
+    maxStock: 40,
+    status: "Tersedia",
+  },
+  {
+    id: "5",
+    sku: "INV-EL-091",
+    name: "Proyektor Epson EB-E01",
+    spec: "3.300 Lumens • Resolusi XGA • Port HDMI / VGA • Ruang Konferensi Lt. 3",
+    category: "Elektronik",
+    stock: 0,
+    maxStock: 15,
+    status: "Habis",
+  },
+  {
+    id: "6",
+    sku: "INV-AK-110",
+    name: "Kabel HDMI 4K Braided 3M",
+    spec: "Ultra High Speed 48Gbps • EARC • Gold Plated Connector • Nylon Braid",
+    category: "Aksesoris Komputer",
+    stock: 85,
+    maxStock: 100,
+    status: "Tersedia",
+  },
+  {
+    id: "7",
+    sku: "INV-PK-005",
+    name: "Printer Canon Pixma G3020",
+    spec: "All-in-One Ink Tank • Wi-Fi Direct Print • Scan Flatbed CIS 600x1200",
+    category: "Peralatan Kantor",
+    stock: 4,
+    maxStock: 20,
+    status: "Stok Menipis",
+  },
+  {
+    id: "8",
+    sku: "INV-FN-012",
+    name: "Meja Kerja Adjustable Elektrik",
+    spec: "Dual-Motor Sit-Stand Desk 160x80cm • Memory Controller LED • Kabel Tray",
+    category: "Furnitur Kantor",
+    stock: 12,
+    maxStock: 20,
+    status: "Tersedia",
+  },
+];
+
+export default function Inventory() {
+  // 1. Theme State (Dark / Light Mode)
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved) return saved === "dark";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDark) {
+      root.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      root.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [isDark]);
+
+  const toggleTheme = () => setIsDark((prev) => !prev);
+
+  // 2. Data State & Filter
+  const [items, setItems] = useState(INITIAL_ITEMS);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("Semua Kategori");
+  const [selectedStatus, setSelectedStatus] = useState("Semua Status");
+
+  // 3. Modal Form State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    sku: "",
+    name: "",
+    spec: "",
+    category: "IT & Hardware",
+    stock: 10,
+  });
+
+  // 4. Kalkulasi Metrik Ringkasan
+  const metrics = useMemo(() => {
+    const totalUnits = items.reduce((acc, curr) => acc + Number(curr.stock), 0);
+    const lowStockCount = items.filter(
+      (i) => i.stock > 0 && i.stock < 10,
+    ).length;
+    const outOfStockCount = items.filter((i) => Number(i.stock) === 0).length;
+    const categoriesSet = new Set(items.map((i) => i.category));
+    return {
+      totalUnits,
+      lowStockCount,
+      outOfStockCount,
+      totalCategories: categoriesSet.size,
+    };
+  }, [items]);
+
+  // 5. Filter Data
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      const matchSearch =
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.spec.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchCategory =
+        selectedCategory === "Semua Kategori" ||
+        item.category === selectedCategory;
+
+      const matchStatus =
+        selectedStatus === "Semua Status" || item.status === selectedStatus;
+
+      return matchSearch && matchCategory && matchStatus;
+    });
+  }, [items, searchQuery, selectedCategory, selectedStatus]);
+
+  // 6. Reset Filter
+  const handleResetFilter = () => {
+    setSearchQuery("");
+    setSelectedCategory("Semua Kategori");
+    setSelectedStatus("Semua Status");
+  };
+
+  // 7. Submit Tambah Barang Baru
+  const handleAddItem = (e) => {
+    e.preventDefault();
+    if (!formData.name.trim() || !formData.sku.trim()) return;
+
+    const parsedStock = Number(formData.stock) || 0;
+    let computedStatus = "Tersedia";
+    if (parsedStock === 0) computedStatus = "Habis";
+    else if (parsedStock < 10) computedStatus = "Stok Menipis";
+
+    const newItem = {
+      id: String(Date.now()),
+      sku: formData.sku.trim().toUpperCase(),
+      name: formData.name.trim(),
+      spec: formData.spec.trim() || "Spesifikasi inventaris standar kantor",
+      category: formData.category,
+      stock: parsedStock,
+      maxStock: Math.max(parsedStock * 1.5, 30),
+      status: computedStatus,
+    };
+
+    setItems((prev) => [newItem, ...prev]);
+    setIsModalOpen(false);
+    setFormData({
+      sku: "",
+      name: "",
+      spec: "",
+      category: "IT & Hardware",
+      stock: 10,
+    });
+  };
+
+  // Helper Icon Kategori
+  const getCategoryIcon = (category) => {
+    switch (category) {
+      case "IT & Hardware":
+        return "bx bx-laptop";
+      case "Elektronik":
+        return "bx bx-tv";
+      case "Furnitur Kantor":
+        return "bx bx-chair";
+      case "Aksesoris Komputer":
+        return "bx bx-mouse";
+      case "Peralatan Kantor":
+        return "bx bx-printer";
+      default:
+        return "bx bx-package";
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col justify-between bg-[#f8f9ff] dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 transition-colors">
+      {/* Header Navigasi Universal */}
+      <Navbar
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
+        activeMenu="Barang / Inventaris"
+      />
+
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header Breadcrumb & Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div>
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-950/60 border border-blue-200/70 dark:border-blue-900 text-[11px] font-semibold text-blue-700 dark:text-blue-300 mb-2">
+              <CheckShield />
+              <span>ENTERPRISE ASSET REGISTRY • NODE ID: JK-04</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Daftar Barang &amp; Inventaris
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
+              Kelola data stok barang fisik, kategori, dan ketersediaan barang
+              inventaris perusahaan secara tersentralisasi dan akurat.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() =>
+                alert(
+                  "Fitur Ekspor data inventaris CSV/Excel siap diintegrasikan!",
+                )
+              }
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-all flex items-center gap-2 shadow-xs cursor-pointer"
+            >
+              <ArrowInUpSquareHalf />
+              <span>Ekspor Data</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-semibold transition-all flex items-center gap-2 shadow-xs cursor-pointer"
+            >
+              <Plus />
+              <span>Tambah Barang Baru</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 4 Kartu Metrik Ringkasan Stok */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {/* Card 1: Total Unit Terdata */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs relative overflow-hidden">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Total Unit Terdata
+              </span>
+              <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                <Container />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                {metrics.totalUnits.toLocaleString()}
+              </span>
+              <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 px-1.5 py-0.5 rounded">
+                +3.4% bln ini
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-2">
+              Total aset fisik terdaftar
+            </p>
+            <div className="mt-4 h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full bg-blue-600 rounded-full w-3/4"></div>
+            </div>
+          </div>
+
+          {/* Card 2: Stok Menipis */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs relative overflow-hidden">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Stok Menipis (&lt; 10)
+              </span>
+              <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                <AlertCircle />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-amber-600 dark:text-amber-400">
+                {metrics.lowStockCount}
+              </span>
+              <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/40 px-1.5 py-0.5 rounded">
+                Peringatan
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-2">
+              Perlu pesanan ulang segera
+            </p>
+            <div className="mt-4 h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full bg-amber-500 rounded-full w-1/2"></div>
+            </div>
+          </div>
+
+          {/* Card 3: Stok Habis */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs relative overflow-hidden">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Stok Habis (Kosong)
+              </span>
+              <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                <CrossCircle />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-rose-600 dark:text-rose-400">
+                {metrics.outOfStockCount}
+              </span>
+              <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/40 px-1.5 py-0.5 rounded">
+                Kritis
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-2">
+              Permintaan tertahan
+            </p>
+            <div className="mt-4 h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full bg-rose-500 rounded-full w-1/4"></div>
+            </div>
+          </div>
+
+          {/* Card 4: Klasifikasi Kategori */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs relative overflow-hidden">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Klasifikasi Kategori
+              </span>
+              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center">
+                <Widget />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                {metrics.totalCategories}
+              </span>
+              <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded">
+                Aktif
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-2">
+              Divisi &amp; utilitas terintegrasi
+            </p>
+            <div className="mt-4 h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full bg-slate-700 dark:bg-slate-300 rounded-full w-4/5"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Toolbar Filter & Pencarian */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 mb-4 shadow-2xs">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+            {/* Input Live Search */}
+            <div className="relative w-full md:flex-1">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+                <Search />
+              </span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari nama barang, kode SKU, atau spesifikasi..."
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-400 transition-all"
+              />
+            </div>
+
+            {/* Dropdown Kategori & Status */}
+            <div className="flex items-center gap-2.5 w-full md:w-auto">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-1/2 md:w-44 py-2 px-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+              >
+                <option value="Semua Kategori">Semua Kategori</option>
+                <option value="IT & Hardware">IT & Hardware</option>
+                <option value="Elektronik">Elektronik</option>
+                <option value="Furnitur Kantor">Furnitur Kantor</option>
+                <option value="Aksesoris Komputer">Aksesoris Komputer</option>
+                <option value="Peralatan Kantor">Peralatan Kantor</option>
+              </select>
+
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="w-1/2 md:w-40 py-2 px-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+              >
+                <option value="Semua Status">Semua Status</option>
+                <option value="Tersedia">Tersedia</option>
+                <option value="Stok Menipis">Stok Menipis</option>
+                <option value="Habis">Habis</option>
+              </select>
+
+              {/* Reset Filter Button */}
+              <button
+                type="button"
+                onClick={handleResetFilter}
+                title="Reset Filter"
+                className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-all cursor-pointer"
+              >
+                <RotateCw />
+              </button>
+            </div>
+          </div>
+
+          {/* Baris Status & Sinkronisasi */}
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-500 dark:text-slate-400">
+            <span>
+              Menampilkan <strong>{filteredItems.length}</strong> dari{" "}
+              <strong>{items.length}</strong> barang terdata
+            </span>
+            <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              Sinkronisasi inventaris mutakhir
+            </span>
+          </div>
+        </div>
+
+        {/* Tabel Data Barang & Inventaris */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <th className="py-3.5 px-4 sm:px-6">Kode / SKU</th>
+                  <th className="py-3.5 px-4">Nama Barang &amp; Spesifikasi</th>
+                  <th className="py-3.5 px-4">Kategori</th>
+                  <th className="py-3.5 px-4">Stok Tersisa</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 text-xs sm:text-sm">
+                {filteredItems.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan="6"
+                      className="py-12 text-center text-slate-400 dark:text-slate-500"
+                    >
+                      <i className="bx bx-search-alt text-3xl mb-2 block"></i>
+                      Tidak ada barang yang cocok dengan kriteria pencarian
+                      Anda.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredItems.map((item) => {
+                    const percentage = Math.min(
+                      Math.round((item.stock / item.maxStock) * 100),
+                      100,
+                    );
+                    return (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                      >
+                        {/* Kode / SKU */}
+                        <td className="py-4 px-4 sm:px-6 font-mono font-semibold text-blue-600 dark:text-blue-400 text-xs">
+                          {item.sku}
+                        </td>
+
+                        {/* Nama Barang & Spesifikasi */}
+                        <td className="py-4 px-4 max-w-md">
+                          <p className="font-semibold text-slate-900 dark:text-white leading-tight">
+                            {item.name}
+                          </p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">
+                            {item.spec}
+                          </p>
+                        </td>
+
+                        {/* Kategori Badge */}
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50/70 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900/60">
+                            <i
+                              className={`${getCategoryIcon(item.category)} text-xs`}
+                            ></i>
+                            {item.category}
+                          </span>
+                        </td>
+
+                        {/* Stok Tersisa & Progress Bar */}
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={`font-semibold text-xs ${
+                                item.stock === 0
+                                  ? "text-rose-600 dark:text-rose-400"
+                                  : item.stock < 10
+                                    ? "text-amber-600 dark:text-amber-400"
+                                    : "text-slate-800 dark:text-slate-200"
+                              }`}
+                            >
+                              {item.stock} Unit
+                            </span>
+                            <div className="w-16 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden hidden sm:block">
+                              <div
+                                style={{ width: `${percentage}%` }}
+                                className={`h-full rounded-full transition-all ${
+                                  item.stock === 0
+                                    ? "bg-rose-500"
+                                    : item.stock < 10
+                                      ? "bg-amber-500"
+                                      : "bg-emerald-500"
+                                }`}
+                              ></div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Status Badge */}
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          {item.status === "Tersedia" && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                              Tersedia
+                            </span>
+                          )}
+                          {item.status === "Stok Menipis" && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                              Stok Menipis
+                            </span>
+                          )}
+                          {item.status === "Habis" && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                              Habis
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Aksi Button */}
+                        <td className="py-4 px-4 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              title="Edit Detail"
+                              onClick={() => alert(`Edit barang: ${item.name}`)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            >
+                              <Edit />
+                            </button>
+                            <button
+                              type="button"
+                              title="Menu Opsi"
+                              onClick={() =>
+                                alert(`Opsi lainnya untuk SKU: ${item.sku}`)
+                              }
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            >
+                              <DotsVertical />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Bar */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs text-slate-500 dark:text-slate-400">
+            <span>
+              Menampilkan <strong>1 - {filteredItems.length}</strong> dari{" "}
+              <strong>1.248</strong> hasil
+            </span>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled
+                className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-300 dark:text-slate-600 flex items-center gap-1 text-xs cursor-not-allowed"
+              >
+                <ArrowLeft />
+                <span>Sebelumnya</span>
+              </button>
+
+              <button
+                type="button"
+                className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs flex items-center justify-center shadow-xs"
+              >
+                1
+              </button>
+              <button
+                type="button"
+                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium text-xs flex items-center justify-center transition-colors cursor-pointer"
+              >
+                2
+              </button>
+              <button
+                type="button"
+                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium text-xs flex items-center justify-center transition-colors cursor-pointer"
+              >
+                3
+              </button>
+              <span className="px-1 text-slate-400">...</span>
+              <button
+                type="button"
+                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium text-xs flex items-center justify-center transition-colors cursor-pointer"
+              >
+                156
+              </button>
+
+              <button
+                type="button"
+                className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center gap-1 text-xs transition-colors cursor-pointer"
+              >
+                <span>Selanjutnya</span>
+                <ArrowRight />
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Modal Dialog: Tambah Barang Inventaris Baru */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full border border-slate-200 dark:border-slate-800 p-6 shadow-xl relative animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-bold">
+                  <i className="bx bx-plus text-lg"></i>
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Tambah Barang Inventaris
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Masukkan detail aset baru ke dalam database inventaris
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <i className="bx bx-x text-xl"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleAddItem} className="space-y-4 mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                    Kode / SKU *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.sku}
+                    onChange={(e) =>
+                      setFormData({ ...formData, sku: e.target.value })
+                    }
+                    placeholder="INV-IT-099"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                    Kategori *
+                  </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) =>
+                      setFormData({ ...formData, category: e.target.value })
+                    }
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  >
+                    <option value="IT & Hardware">IT & Hardware</option>
+                    <option value="Elektronik">Elektronik</option>
+                    <option value="Furnitur Kantor">Furnitur Kantor</option>
+                    <option value="Aksesoris Komputer">
+                      Aksesoris Komputer
+                    </option>
+                    <option value="Peralatan Kantor">Peralatan Kantor</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                  Nama Barang *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  placeholder="Contoh: MacBook Pro M2 14 Inch"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                  Spesifikasi &amp; Lokasi Unit
+                </label>
+                <textarea
+                  rows="2"
+                  value={formData.spec}
+                  onChange={(e) =>
+                    setFormData({ ...formData, spec: e.target.value })
+                  }
+                  placeholder="Spesifikasi prosesor, RAM, seri garansi, atau posisi ruang penempatan..."
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
+                ></textarea>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                  Jumlah Stok Awal *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={formData.stock}
+                  onChange={(e) =>
+                    setFormData({ ...formData, stock: e.target.value })
+                  }
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-semibold shadow-xs hover:bg-slate-800 dark:hover:bg-slate-100 transition-all cursor-pointer"
+                >
+                  Simpan Barang
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Universal Footer */}
+      <Footer />
+    </div>
+  );
+}
