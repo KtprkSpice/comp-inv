@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Navbar from "../../components/navbar";
 import Footer from "../../components/footer";
 import {
@@ -21,6 +21,8 @@ import {
   UserX,
   X,
 } from "@boxicons/react";
+import CreateEmployeeModal from "../../components/createEmployeeModal";
+import EditEmployeeModal from "../../components/editEmployeeModal";
 
 // Daftar divisi sesuai pemetaan DivisionID (uint)
 export const DIVISIONS = [
@@ -35,80 +37,6 @@ export const DIVISIONS = [
 ];
 
 // Mock data awal diselaraskan dengan Go struct UpdateEmployeeRequest
-const INITIAL_EMPLOYEES = [
-  {
-    id: "EMP-0101",
-    fullname: "Budi Santoso",
-    email: "budi.santoso@perusahaan.com",
-    phone: "0812-3456-7890",
-    division_id: 1,
-    status: "active", // 'active' | 'inactive'
-    password_hash_info: "Bcrypt Hash Valid • Diganti 14 hari lalu",
-  },
-  {
-    id: "EMP-0204",
-    fullname: "Siti Rahmawati",
-    email: "siti.rahma@perusahaan.com",
-    phone: "0813-9876-5432",
-    division_id: 2,
-    status: "active",
-    password_hash_info: "Bcrypt Hash Valid • Diganti 32 hari lalu",
-  },
-  {
-    id: "EMP-0312",
-    fullname: "Dimas Pratama",
-    email: "dimas.pratama@perusahaan.com",
-    phone: "0857-1122-3344",
-    division_id: 3,
-    status: "active",
-    password_hash_info: "Bcrypt Hash Valid • Diganti 5 hari lalu",
-  },
-  {
-    id: "EMP-0402",
-    fullname: "Anita Kusuma",
-    email: "anita.kusuma@perusahaan.com",
-    phone: "0878-5566-7788",
-    division_id: 4,
-    status: "active",
-    password_hash_info: "Argon2 Hash Valid • Diganti 21 hari lalu",
-  },
-  {
-    id: "EMP-0501",
-    fullname: "Hendra Wijaya",
-    email: "hendra.wijaya@perusahaan.com",
-    phone: "0821-4433-2211",
-    division_id: 5,
-    status: "inactive",
-    password_hash_info: "Akses Dinonaktifkan • Cuti Operasional",
-  },
-  {
-    id: "EMP-0215",
-    fullname: "Rian Febrian",
-    email: "rian.febrian@perusahaan.com",
-    phone: "0852-7788-9900",
-    division_id: 2,
-    status: "active",
-    password_hash_info: "Bcrypt Hash Valid • Diganti 8 hari lalu",
-  },
-  {
-    id: "EMP-0108",
-    fullname: "Maya Anggraini",
-    email: "maya.anggraini@perusahaan.com",
-    phone: "0819-3322-1144",
-    division_id: 1,
-    status: "active",
-    password_hash_info: "Bcrypt Hash Valid • Diganti 40 hari lalu",
-  },
-  {
-    id: "EMP-0320",
-    fullname: "Fajar Setiawan",
-    email: "fajar.setiawan@perusahaan.com",
-    phone: "0838-9988-7766",
-    division_id: 3,
-    status: "inactive",
-    password_hash_info: "Akses Ditangguhkan • Menunggu Verifikasi Mutasi",
-  },
-];
 
 export default function Employees({ activeMenu = "Karyawan" }) {
   // 1. Dark Mode State & LocalStorage
@@ -132,7 +60,8 @@ export default function Employees({ activeMenu = "Karyawan" }) {
   const toggleTheme = () => setIsDark((prev) => !prev);
 
   // 2. Data Karyawan & Filter State
-  const [employees, setEmployees] = useState(INITIAL_EMPLOYEES);
+  const [employees, setEmployees] = useState([]);
+  const [useMockData, setUseMockData] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDivision, setSelectedDivision] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
@@ -151,13 +80,38 @@ export default function Employees({ activeMenu = "Karyawan" }) {
 
   // 4. Modal State (Create Employee)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [createFormData, setCreateFormData] = useState({
-    fullname: "",
-    phone: "",
-    division_id: 1,
-    email: "",
-    password: "",
-  });
+
+  const loadEmployees = useCallback(async () => {
+    try {
+      const response = await fetch("http://localhost:8080/api/employee/get");
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || result.message || "Gagal memuat karyawan");
+      }
+
+      const employeeList = (result.data ?? []).map((item) => ({
+        id: item.id,
+        fullname: item.fullname ?? "",
+        email: item.user?.email ?? "",
+        phone: item.phone ?? "",
+        division_id: item.division_id,
+        status: item.status,
+        password_hash_info: "Sandi Terproteksi",
+      }));
+
+      setEmployees(employeeList);
+      setUseMockData(false);
+    } catch (error) {
+      console.error("Gagal memuat database karyawan:", error);
+      setUseMockData(true);
+      throw error;
+    }
+  }, []);
+
+  useEffect(() => {
+    loadEmployees().catch(() => {});
+  }, [loadEmployees]);
 
   // Inisialisasi form edit
   const openEditModal = (emp) => {
@@ -203,36 +157,6 @@ export default function Employees({ activeMenu = "Karyawan" }) {
     setIsEditModalOpen(false);
   };
 
-  // Submit Tambah Karyawan Baru
-  const handleCreateSubmit = (e) => {
-    e.preventDefault();
-    if (createFormData.password.length < 8) {
-      alert("Kata sandi wajib minimal 8 karakter.");
-      return;
-    }
-
-    const newId = `EMP-0${employees.length + 101}`;
-    const newEmp = {
-      id: newId,
-      fullname: createFormData.fullname.trim(),
-      email: createFormData.email.trim(),
-      phone: createFormData.phone.trim(),
-      division_id: Number(createFormData.division_id),
-      status: "active",
-      password_hash_info: "Bcrypt Hash Valid • Akun baru terdaftar",
-    };
-
-    setEmployees((prev) => [newEmp, ...prev]);
-    setIsCreateModalOpen(false);
-    setCreateFormData({
-      fullname: "",
-      phone: "",
-      division_id: 1,
-      email: "",
-      password: "",
-    });
-  };
-
   // Filter Data
   const filteredEmployees = useMemo(() => {
     return employees.filter((emp) => {
@@ -240,7 +164,7 @@ export default function Employees({ activeMenu = "Karyawan" }) {
         emp.fullname.toLowerCase().includes(searchQuery.toLowerCase()) ||
         emp.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         emp.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        emp.id.toLowerCase().includes(searchQuery.toLowerCase());
+        String(emp.id).toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchDivision =
         selectedDivision === "ALL" ||
@@ -558,7 +482,7 @@ export default function Employees({ activeMenu = "Karyawan" }) {
                     </td>
                   </tr>
                 ) : (
-                  filteredEmployees.map((emp) => {
+                  filteredEmployees.map((emp, index) => {
                     const divObj = getDivisionObj(emp.division_id);
                     const initials = emp.fullname
                       .split(" ")
@@ -575,7 +499,7 @@ export default function Employees({ activeMenu = "Karyawan" }) {
                         {/* ID / NIK */}
                         <td className="py-4 px-4 sm:px-6 font-mono font-semibold text-blue-600 dark:text-blue-400 text-xs">
                           <span className="px-2 py-1 rounded bg-blue-50 dark:bg-blue-950/60 border border-blue-200/50 dark:border-blue-900/60">
-                            {emp.id}
+                            {index + 1}
                           </span>
                         </td>
 
@@ -633,10 +557,10 @@ export default function Employees({ activeMenu = "Karyawan" }) {
                             <CheckShield />
                             <div>
                               <p className="text-xs font-medium text-slate-800 dark:text-slate-200">
-                                {emp.password_hash_info.split("•")[0]}
+                                {(emp.password_hash_info ?? "Sandi Terproteksi").split("•")[0]}
                               </p>
                               <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                                {emp.password_hash_info.split("•")[1] ||
+                                {(emp.password_hash_info ?? "Sandi Terproteksi").split("•")[1] ||
                                   "Sandi Terproteksi"}
                               </p>
                             </div>
@@ -739,320 +663,22 @@ export default function Employees({ activeMenu = "Karyawan" }) {
       </main>
 
       {/* MODAL 1: Update Employee (Sesuai struct UpdateEmployeeRequest) */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full border border-slate-200 dark:border-slate-800 p-6 shadow-xl relative animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
-                  <Edit />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Update Data Karyawan
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Sesuai skema payload backend: UpdateEmployeeRequest
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsEditModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <X />
-              </button>
-            </div>
-
-            <form onSubmit={handleUpdateSubmit} className="space-y-4 mt-4">
-              {/* Fullname */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                  Nama Lengkap (Fullname) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editFormData.fullname}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      fullname: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-                />
-              </div>
-
-              {/* Email & Phone */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                    Email Perusahaan *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={editFormData.email}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        email: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                    Nomor Telepon (Phone) *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editFormData.phone}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        phone: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-                  />
-                </div>
-              </div>
-
-              {/* DivisionID & Status */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                    Divisi (DivisionID uint) *
-                  </label>
-                  <select
-                    value={editFormData.division_id}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        division_id: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-                  >
-                    {DIVISIONS.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                    Status Akun (Status) *
-                  </label>
-                  <select
-                    value={editFormData.status}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        status: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-                  >
-                    <option value="active">active (Akun Aktif)</option>
-                    <option value="inactive">inactive (Nonaktif)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Password Baru (min=8) */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                  Ganti Kata Sandi (Kosongkan jika tidak diubah, min. 8
-                  karakter)
-                </label>
-                <input
-                  type="password"
-                  value={editFormData.password}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      password: e.target.value,
-                    })
-                  }
-                  placeholder="••••••••"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-                />
-              </div>
-
-              {/* Tombol Simpan */}
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-semibold shadow-xs hover:bg-slate-800 dark:hover:bg-slate-100 transition-all cursor-pointer"
-                >
-                  Simpan Perubahan
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <EditEmployeeModal
+        isOpen={isEditModalOpen}
+        editFormData={editFormData}
+        DIVISIONS={DIVISIONS}
+        handleUpdateSubmit={handleUpdateSubmit}
+        setIsEditModalOpen={setIsEditModalOpen}
+        setEditFormData={setEditFormData}
+      />
 
       {/* MODAL 2: Create Employee Baru */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full border border-slate-200 dark:border-slate-800 p-6 shadow-xl relative animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center">
-                  <Plus />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Tambah Karyawan Baru
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Formulir pendaftaran staf &amp; akun portal inventaris
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <X />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSubmit} className="space-y-4 mt-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                  Nama Lengkap (Fullname) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: Budi Santoso"
-                  value={createFormData.fullname}
-                  onChange={(e) =>
-                    setCreateFormData({
-                      ...createFormData,
-                      fullname: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                    Email Perusahaan *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="nama@perusahaan.com"
-                    value={createFormData.email}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        email: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                    Nomor Telepon / WA *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="0812-3456-7890"
-                    value={createFormData.phone}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        phone: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                  Divisi (DivisionID) *
-                </label>
-                <select
-                  value={createFormData.division_id}
-                  onChange={(e) =>
-                    setCreateFormData({
-                      ...createFormData,
-                      division_id: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-                >
-                  {DIVISIONS.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                  Kata Sandi Awal (Password min. 8 karakter) *
-                </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="Min. 8 karakter"
-                  value={createFormData.password}
-                  onChange={(e) =>
-                    setCreateFormData({
-                      ...createFormData,
-                      password: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-semibold shadow-xs hover:bg-slate-800 dark:hover:bg-slate-100 transition-all cursor-pointer"
-                >
-                  Simpan &amp; Buat Akun
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <CreateEmployeeModal
+        isOpen={isCreateModalOpen}
+        DIVISIONS={DIVISIONS}
+        setIsCreateModalOpen={setIsCreateModalOpen}
+        onCreated={loadEmployees}
+      />
 
       {/* Universal Footer */}
       <Footer />
