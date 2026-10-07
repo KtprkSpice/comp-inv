@@ -3,8 +3,6 @@ import Navbar from "../../components/navbar";
 import Footer from "../../components/footer";
 import {
   ArrowInUpSquareHalf,
-  ArrowLeft,
-  ArrowRight,
   CheckCircle,
   CheckShield,
   DotsVertical,
@@ -23,6 +21,7 @@ import {
 } from "@boxicons/react";
 import CreateEmployeeModal from "../../components/createEmployeeModal";
 import EditEmployeeModal from "../../components/editEmployeeModal";
+import DataTable from "../../components/dataTable";
 
 // Daftar divisi sesuai pemetaan DivisionID (uint)
 export const DIVISIONS = [
@@ -66,18 +65,6 @@ export default function Employees({ activeMenu = "Karyawan" }) {
   const [selectedDivision, setSelectedDivision] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
 
-  // 3. Modal State (Update / Edit Employee)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState(null);
-  const [editFormData, setEditFormData] = useState({
-    fullname: "",
-    phone: "",
-    division_id: 1,
-    status: "active",
-    email: "",
-    password: "",
-  });
-
   // 4. Modal State (Create Employee)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
@@ -87,7 +74,9 @@ export default function Employees({ activeMenu = "Karyawan" }) {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || result.message || "Gagal memuat karyawan");
+        throw new Error(
+          result.error || result.message || "Gagal memuat karyawan",
+        );
       }
 
       const employeeList = (result.data ?? []).map((item) => ({
@@ -113,49 +102,10 @@ export default function Employees({ activeMenu = "Karyawan" }) {
     loadEmployees().catch(() => {});
   }, [loadEmployees]);
 
-  // Inisialisasi form edit
-  const openEditModal = (emp) => {
-    setEditingEmployee(emp);
-    setEditFormData({
-      fullname: emp.fullname,
-      phone: emp.phone,
-      division_id: emp.division_id,
-      status: emp.status,
-      email: emp.email,
-      password: "", // Opsional ganti sandi baru (min 8 karakter)
-    });
-    setIsEditModalOpen(true);
-  };
-
-  // Submit Update Employee (UpdateEmployeeRequest)
-  const handleUpdateSubmit = (e) => {
-    e.preventDefault();
-    if (editFormData.password && editFormData.password.length < 8) {
-      alert("Kata sandi harus minimal 8 karakter sesuai aturan backend.");
-      return;
-    }
-
-    setEmployees((prev) =>
-      prev.map((item) => {
-        if (item.id === editingEmployee.id) {
-          return {
-            ...item,
-            fullname: editFormData.fullname.trim(),
-            phone: editFormData.phone.trim(),
-            division_id: Number(editFormData.division_id),
-            status: editFormData.status,
-            email: editFormData.email.trim(),
-            password_hash_info: editFormData.password
-              ? "Bcrypt Hash Valid • Baru saja diperbarui"
-              : item.password_hash_info,
-          };
-        }
-        return item;
-      }),
-    );
-
-    setIsEditModalOpen(false);
-  };
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   // Filter Data
   const filteredEmployees = useMemo(() => {
@@ -177,6 +127,23 @@ export default function Employees({ activeMenu = "Karyawan" }) {
     });
   }, [employees, searchQuery, selectedDivision, selectedStatus]);
 
+  const totalPages = Math.ceil(filteredEmployees.length / pageSize);
+  const pageStartIndex = (currentPage - 1) * pageSize;
+  const paginatedEmployees = filteredEmployees.slice(
+    pageStartIndex,
+    pageStartIndex + pageSize,
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedDivision, selectedStatus]);
+
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   // Metrik Statistik Karyawan
   const metrics = useMemo(() => {
     const total = employees.length;
@@ -187,8 +154,134 @@ export default function Employees({ activeMenu = "Karyawan" }) {
   }, [employees]);
 
   // Helper Divisi
-  const getDivisionObj = (id) =>
-    DIVISIONS.find((d) => d.id === id) || DIVISIONS[0];
+  const employeeCol = [
+    {
+      key: "fullname",
+      header: "Karyawan & Kontak",
+      className: "py-4 px-4 max-w-sm",
+      render: (emp) => {
+        const initials = emp.fullname
+          .split(" ")
+          .map((part) => part[0])
+          .slice(0, 2)
+          .join("")
+          .toUpperCase();
+
+        return (
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center text-xs shrink-0">
+              {initials}
+            </div>
+            <div>
+              <p className="font-semibold text-slate-900 dark:text-white leading-tight">
+                {emp.fullname}
+              </p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                <span className="inline-flex items-center gap-1">
+                  <i className="bx bx-envelope text-xs"></i>
+                  {emp.email}
+                </span>
+                <span>•</span>
+                <span className="inline-flex items-center gap-1">
+                  <i className="bx bx-phone text-xs"></i>
+                  {emp.phone}
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: "division_id",
+      header: "Divisi (DivisionID)",
+      className: "py-4 px-4 whitespace-nowrap",
+      render: (emp) => {
+        const division = DIVISIONS.find((item) => item.id === emp.division_id);
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/70 dark:border-slate-700">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+            {division?.name ?? "Belum ditentukan"}
+          </span>
+        );
+      },
+    },
+    {
+      key: "status",
+      header: "Status Akun",
+      className: "py-4 px-4 whitespace-nowrap",
+      render: (emp) =>
+        emp.status === "active" ? (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            Active
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+            Inactive
+          </span>
+        ),
+    },
+    {
+      key: "credentials",
+      header: "Credentials Keamanan",
+      className: "py-4 px-4 whitespace-nowrap",
+      render: (emp) => (
+        <div className="flex items-center gap-2">
+          <CheckShield />
+          <div>
+            <p className="text-xs font-medium text-slate-800 dark:text-slate-200">
+              {(emp.password_hash_info ?? "Sandi Terproteksi").split("•")[0]}
+            </p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500">
+              {(emp.password_hash_info ?? "Sandi Terproteksi").split("•")[1] ||
+                "Sandi Terproteksi"}
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "aksi",
+      header: "Aksi",
+      className: "py-4 px-4 text-center whitespace-nowrap",
+      render: (emp) => (
+        <div className="flex items-center justify-center gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              setEditingEmployee(emp);
+              setIsEditModalOpen(true);
+            }}
+            title="Edit Data / UpdateEmployeeRequest"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          >
+            <Edit />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setEditingEmployee(emp);
+              setIsEditModalOpen(true);
+            }}
+            title="Ganti Password"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          >
+            <Key />
+          </button>
+          <button
+            type="button"
+            onClick={() => alert(`Opsi tambahan untuk ${emp.fullname}`)}
+            title="Menu Opsi"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          >
+            <DotsVertical />
+          </button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#f8f9ff] dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 transition-colors">
@@ -457,219 +550,24 @@ export default function Employees({ activeMenu = "Karyawan" }) {
         </div>
 
         {/* Tabel Data Karyawan (Sesuai Skema UpdateEmployeeRequest) */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  <th className="py-3.5 px-4 sm:px-6">ID / NIK</th>
-                  <th className="py-3.5 px-4">Karyawan &amp; Kontak</th>
-                  <th className="py-3.5 px-4">Divisi (DivisionID)</th>
-                  <th className="py-3.5 px-4">Status Akun</th>
-                  <th className="py-3.5 px-4">Kredensial Keamanan</th>
-                  <th className="py-3.5 px-4 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 text-xs sm:text-sm">
-                {filteredEmployees.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan="6"
-                      className="py-12 text-center text-slate-400 dark:text-slate-500"
-                    >
-                      <i className="bx bx-user-x text-3xl mb-2 block"></i>
-                      Tidak ada karyawan yang cocok dengan kriteria filter Anda.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredEmployees.map((emp, index) => {
-                    const divObj = getDivisionObj(emp.division_id);
-                    const initials = emp.fullname
-                      .split(" ")
-                      .map((n) => n[0])
-                      .slice(0, 2)
-                      .join("")
-                      .toUpperCase();
-
-                    return (
-                      <tr
-                        key={emp.id}
-                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
-                      >
-                        {/* ID / NIK */}
-                        <td className="py-4 px-4 sm:px-6 font-mono font-semibold text-blue-600 dark:text-blue-400 text-xs">
-                          <span className="px-2 py-1 rounded bg-blue-50 dark:bg-blue-950/60 border border-blue-200/50 dark:border-blue-900/60">
-                            {index + 1}
-                          </span>
-                        </td>
-
-                        {/* Karyawan & Kontak (Fullname, Email, Phone) */}
-                        <td className="py-4 px-4 max-w-sm">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center text-xs shrink-0">
-                              {initials}
-                            </div>
-                            <div>
-                              <p className="font-semibold text-slate-900 dark:text-white leading-tight">
-                                {emp.fullname}
-                              </p>
-                              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                                <span className="inline-flex items-center gap-1">
-                                  <i className="bx bx-envelope text-xs"></i>
-                                  {emp.email}
-                                </span>
-                                <span>•</span>
-                                <span className="inline-flex items-center gap-1">
-                                  <i className="bx bx-phone text-xs"></i>
-                                  {emp.phone}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Divisi (DivisionID) */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/70 dark:border-slate-700">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                            {divObj.name}
-                          </span>
-                        </td>
-
-                        {/* Status Akun (models.Status) */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          {emp.status === "active" ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                              Active
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                              <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                              Inactive
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Kredensial Keamanan */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <CheckShield />
-                            <div>
-                              <p className="text-xs font-medium text-slate-800 dark:text-slate-200">
-                                {(emp.password_hash_info ?? "Sandi Terproteksi").split("•")[0]}
-                              </p>
-                              <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                                {(emp.password_hash_info ?? "Sandi Terproteksi").split("•")[1] ||
-                                  "Sandi Terproteksi"}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Tombol Aksi */}
-                        <td className="py-4 px-4 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => openEditModal(emp)}
-                              title="Edit Data / UpdateEmployeeRequest"
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                            >
-                              <Edit />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openEditModal(emp)}
-                              title="Ganti Password"
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                            >
-                              <Key />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                alert(`Opsi tambahan untuk ${emp.fullname}`)
-                              }
-                              title="Menu Opsi"
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                            >
-                              <DotsVertical />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Bar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs text-slate-500 dark:text-slate-400">
-            <span>
-              Menampilkan baris <strong>1</strong> sampai{" "}
-              <strong>{filteredEmployees.length}</strong> dari{" "}
-              <strong>128</strong> total entri
-            </span>
-
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                disabled
-                className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-300 dark:text-slate-600 flex items-center gap-1 text-xs cursor-not-allowed"
-              >
-                <ArrowLeft />
-                <span>Sebelumnya</span>
-              </button>
-
-              <button
-                type="button"
-                className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs flex items-center justify-center shadow-xs"
-              >
-                1
-              </button>
-              <button
-                type="button"
-                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium text-xs flex items-center justify-center transition-colors"
-              >
-                2
-              </button>
-              <button
-                type="button"
-                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium text-xs flex items-center justify-center transition-colors"
-              >
-                3
-              </button>
-              <span className="px-1 text-slate-400">...</span>
-              <button
-                type="button"
-                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium text-xs flex items-center justify-center transition-colors"
-              >
-                16
-              </button>
-
-              <button
-                type="button"
-                className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center gap-1 text-xs transition-colors cursor-pointer"
-              >
-                <span>Berikutnya</span>
-                <ArrowRight />
-              </button>
-            </div>
-          </div>
-        </div>
+        <DataTable
+          columns={employeeCol}
+          data={paginatedEmployees}
+          totalRows={filteredEmployees.length}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          emptyMessage="Tidak ada karyawan yang cocok dengan kriteria filter Anda."
+        />
       </main>
 
       {/* MODAL 1: Update Employee (Sesuai struct UpdateEmployeeRequest) */}
       <EditEmployeeModal
         isOpen={isEditModalOpen}
-        editFormData={editFormData}
+        employee={editingEmployee}
         DIVISIONS={DIVISIONS}
-        handleUpdateSubmit={handleUpdateSubmit}
         setIsEditModalOpen={setIsEditModalOpen}
-        setEditFormData={setEditFormData}
+        onUpdate={loadEmployees}
       />
 
       {/* MODAL 2: Create Employee Baru */}

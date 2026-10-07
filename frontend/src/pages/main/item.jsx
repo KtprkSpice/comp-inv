@@ -1,6 +1,6 @@
 import Navbar from "../../components/navbar";
 import Footer from "../../components/footer";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   ArrowInUpSquareHalf,
@@ -11,12 +11,14 @@ import {
   CrossCircle,
   DotsVertical,
   Edit,
+  Percentage,
   Plus,
   RefreshCw,
   RotateCw,
   Search,
   Widget,
 } from "@boxicons/react";
+import DataTable from "../../components/dataTable";
 const INITIAL_ITEMS = [
   {
     id: "1",
@@ -119,13 +121,213 @@ export default function Inventory() {
     }
   }, [isDark]);
 
+  // Const
   const toggleTheme = () => setIsDark((prev) => !prev);
-
-  // 2. Data State & Filter
-  const [items, setItems] = useState(INITIAL_ITEMS);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
   const [selectedCategory, setSelectedCategory] = useState("Semua Kategori");
   const [selectedStatus, setSelectedStatus] = useState("Semua Status");
+
+  // Get Item
+  const [items, setItems] = useState([]);
+
+  const loadItems = useCallback(async () => {
+    try {
+      const response = await fetch("http://localhost:8080/api/item/get");
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || result.message || "Gagal memuat item");
+      }
+
+      const itemList = (result.data ?? []).map((item) => ({
+        id: item.id,
+        name: item.name ?? "",
+        category: item.category ?? "",
+        stock: Number(item.stock ?? 0),
+        status:
+          Number(item.stock ?? 0) === 0
+            ? "Habis"
+            : Number(item.stock ?? 0) < 10
+              ? "Stok Menipis"
+              : "Tersedia",
+      }));
+
+      setItems(itemList);
+    } catch (error) {
+      console.error("Gagal memuat data item:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadItems();
+  }, [loadItems]);
+
+  //Filter Data
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      const matchSearch =
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        String(item.stock).includes(searchQuery.toLowerCase());
+
+      const matchCategory =
+        selectedCategory === "Semua Kategori" ||
+        item.category === selectedCategory;
+
+      const matchStatus =
+        selectedStatus === "Semua Status" || item.status === selectedStatus;
+
+      return matchSearch && matchCategory && matchStatus;
+    });
+  }, [items, searchQuery, selectedCategory, selectedStatus]);
+
+  const totalPages = Math.ceil(filteredItems.length / pageSize);
+  const paginatedItems = filteredItems.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+
+  // Page
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory, selectedStatus]);
+
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  // Column
+  const col = [
+    {
+      key: "name",
+      header: "Nama Barang & Spesifikasi",
+      className: "py-4 px-4 max-w-md",
+      render: (item) => {
+        const initials = item.name
+          .split(" ")
+          .map((part) => part[0])
+          .slice(0, 2)
+          .join("")
+          .toUpperCase();
+        return (
+          <p className="font-semibold text-slate-900 dark:text-white leading-tight">
+            {item.name}
+          </p>
+        );
+      },
+    },
+    {
+      key: "category",
+      header: "Kategori",
+      className: "py-4 px-4 whitespace-nowrap",
+      render: (item) => {
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50/70 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900/60">
+            <i className={`${getCategoryIcon(item.category)} text-xs`}></i>
+            {item.category}
+          </span>
+        );
+      },
+    },
+    {
+      key: "stock",
+      header: "Stok Tersisa",
+      className: "py-4 px-4 whitespace-nowrap",
+      render: (item) => {
+        return (
+          <div className="flex items-center gap-3">
+            <span
+              className={`font-semibold text-xs ${
+                item.stock === 0
+                  ? "text-rose-600 dark:text-rose-400"
+                  : item.stock < 10
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-slate-800 dark:text-slate-200"
+              }`}
+            >
+              {item.stock} Unit
+            </span>
+            <div className="w-16 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden hidden sm:block">
+              <div
+                style={{ width: `${Percentage}%` }}
+                className={`h-full rounded-full transition-all ${
+                  item.stock === 0
+                    ? "bg-rose-500"
+                    : item.stock < 10
+                      ? "bg-amber-500"
+                      : "bg-emerald-500"
+                }`}
+              ></div>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: "status",
+      header: "Status",
+      className: "py-4 px-4 whitespace-nowrap",
+      render: (item) => {
+        {
+          item.status === "Tersedia" && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              Tersedia
+            </span>
+          );
+        }
+        {
+          item.status === "Stok Menipis" && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+              Stok Menipis
+            </span>
+          );
+        }
+        {
+          item.status === "Habis" && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+              Habis
+            </span>
+          );
+        }
+      },
+    },
+    {
+      key: "aksi",
+      header: "Aksi",
+      className: "py-4 px-4 text-center whitespace-nowrap",
+      render: (item) => {
+        return (
+          <div className="flex items-center justify-center gap-1">
+            <button
+              type="button"
+              title="Edit Detail"
+              onClick={() => alert(`Edit barang: ${item.name}`)}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <Edit />
+            </button>
+            <button
+              type="button"
+              title="Menu Opsi"
+              onClick={() => alert(`Opsi lainnya untuk SKU: ${item.sku}`)}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <DotsVertical />
+            </button>
+          </div>
+        );
+      },
+    },
+  ];
+
+  // 2. Data State & Filter
 
   // 3. Modal Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -152,25 +354,6 @@ export default function Inventory() {
       totalCategories: categoriesSet.size,
     };
   }, [items]);
-
-  // 5. Filter Data
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      const matchSearch =
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.spec.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchCategory =
-        selectedCategory === "Semua Kategori" ||
-        item.category === selectedCategory;
-
-      const matchStatus =
-        selectedStatus === "Semua Status" || item.status === selectedStatus;
-
-      return matchSearch && matchCategory && matchStatus;
-    });
-  }, [items, searchQuery, selectedCategory, selectedStatus]);
 
   // 6. Reset Filter
   const handleResetFilter = () => {
@@ -457,202 +640,15 @@ export default function Inventory() {
         </div>
 
         {/* Tabel Data Barang & Inventaris */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  <th className="py-3.5 px-4 sm:px-6">Kode / SKU</th>
-                  <th className="py-3.5 px-4">Nama Barang &amp; Spesifikasi</th>
-                  <th className="py-3.5 px-4">Kategori</th>
-                  <th className="py-3.5 px-4">Stok Tersisa</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 text-xs sm:text-sm">
-                {filteredItems.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan="6"
-                      className="py-12 text-center text-slate-400 dark:text-slate-500"
-                    >
-                      <i className="bx bx-search-alt text-3xl mb-2 block"></i>
-                      Tidak ada barang yang cocok dengan kriteria pencarian
-                      Anda.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredItems.map((item) => {
-                    const percentage = Math.min(
-                      Math.round((item.stock / item.maxStock) * 100),
-                      100,
-                    );
-                    return (
-                      <tr
-                        key={item.id}
-                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
-                      >
-                        {/* Kode / SKU */}
-                        <td className="py-4 px-4 sm:px-6 font-mono font-semibold text-blue-600 dark:text-blue-400 text-xs">
-                          {item.sku}
-                        </td>
-
-                        {/* Nama Barang & Spesifikasi */}
-                        <td className="py-4 px-4 max-w-md">
-                          <p className="font-semibold text-slate-900 dark:text-white leading-tight">
-                            {item.name}
-                          </p>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">
-                            {item.spec}
-                          </p>
-                        </td>
-
-                        {/* Kategori Badge */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50/70 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900/60">
-                            <i
-                              className={`${getCategoryIcon(item.category)} text-xs`}
-                            ></i>
-                            {item.category}
-                          </span>
-                        </td>
-
-                        {/* Stok Tersisa & Progress Bar */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <div className="flex items-center gap-3">
-                            <span
-                              className={`font-semibold text-xs ${
-                                item.stock === 0
-                                  ? "text-rose-600 dark:text-rose-400"
-                                  : item.stock < 10
-                                    ? "text-amber-600 dark:text-amber-400"
-                                    : "text-slate-800 dark:text-slate-200"
-                              }`}
-                            >
-                              {item.stock} Unit
-                            </span>
-                            <div className="w-16 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden hidden sm:block">
-                              <div
-                                style={{ width: `${percentage}%` }}
-                                className={`h-full rounded-full transition-all ${
-                                  item.stock === 0
-                                    ? "bg-rose-500"
-                                    : item.stock < 10
-                                      ? "bg-amber-500"
-                                      : "bg-emerald-500"
-                                }`}
-                              ></div>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Status Badge */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          {item.status === "Tersedia" && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                              Tersedia
-                            </span>
-                          )}
-                          {item.status === "Stok Menipis" && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                              Stok Menipis
-                            </span>
-                          )}
-                          {item.status === "Habis" && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                              Habis
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Aksi Button */}
-                        <td className="py-4 px-4 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              title="Edit Detail"
-                              onClick={() => alert(`Edit barang: ${item.name}`)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                            >
-                              <Edit />
-                            </button>
-                            <button
-                              type="button"
-                              title="Menu Opsi"
-                              onClick={() =>
-                                alert(`Opsi lainnya untuk SKU: ${item.sku}`)
-                              }
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                            >
-                              <DotsVertical />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Bar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs text-slate-500 dark:text-slate-400">
-            <span>
-              Menampilkan <strong>1 - {filteredItems.length}</strong> dari{" "}
-              <strong>1.248</strong> hasil
-            </span>
-
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                disabled
-                className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-300 dark:text-slate-600 flex items-center gap-1 text-xs cursor-not-allowed"
-              >
-                <ArrowLeft />
-                <span>Sebelumnya</span>
-              </button>
-
-              <button
-                type="button"
-                className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-xs flex items-center justify-center shadow-xs"
-              >
-                1
-              </button>
-              <button
-                type="button"
-                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium text-xs flex items-center justify-center transition-colors cursor-pointer"
-              >
-                2
-              </button>
-              <button
-                type="button"
-                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium text-xs flex items-center justify-center transition-colors cursor-pointer"
-              >
-                3
-              </button>
-              <span className="px-1 text-slate-400">...</span>
-              <button
-                type="button"
-                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium text-xs flex items-center justify-center transition-colors cursor-pointer"
-              >
-                156
-              </button>
-
-              <button
-                type="button"
-                className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center gap-1 text-xs transition-colors cursor-pointer"
-              >
-                <span>Selanjutnya</span>
-                <ArrowRight />
-              </button>
-            </div>
-          </div>
-        </div>
+        <DataTable
+          columns={col}
+          data={paginatedItems}
+          totalRows={filteredItems.length}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          emptyMessage="Tidak ada barang yang cocok dengan kriteria filter Anda."
+        />
       </main>
 
       {/* Modal Dialog: Tambah Barang Inventaris Baru */}

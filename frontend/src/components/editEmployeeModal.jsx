@@ -1,15 +1,78 @@
 import { Edit, X } from "@boxicons/react";
+import { useState, useEffect } from "react";
 
 export default function EditEmployeeModal({
   isOpen,
   employee,
-  editFormData,
   DIVISIONS,
-  handleUpdateSubmit,
   setIsEditModalOpen,
-  setEditFormData,
+  onUpdate,
 }) {
+  const [editFormData, setEditFormData] = useState({
+    fullname: "",
+    phone: "",
+    division_id: 1,
+    status: "active",
+    email: "",
+    password: "",
+  });
+
+  useEffect(() => {
+    if (!isOpen || !employee) return;
+
+    setEditFormData({
+      fullname: employee.fullname ?? "",
+      phone: employee.phone ?? "",
+      division_id: employee.division_id ?? 1,
+      status: employee.status ?? "active",
+      email: employee.email ?? "",
+      password: "",
+    });
+  }, [isOpen, employee]);
+
   if (!isOpen || !employee) return null;
+
+  // Submit Update Employee (UpdateEmployeeRequest)
+  const handleUpdateSubmit = async (e) => {
+    e.preventDefault();
+    if (editFormData.password.length < 8) {
+      alert("Kata sandi harus minimal 8 karakter sesuai aturan backend.");
+      return;
+    }
+
+    const payload = {
+      fullname: editFormData.fullname.trim(),
+      phone: editFormData.phone.trim(),
+      division_id: Number(editFormData.division_id),
+      status: editFormData.status,
+      email: editFormData.email.trim(),
+      password: editFormData.password,
+    };
+
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/employee/${employee.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error || result.message || "Gagal memperbarui karyawan",
+        );
+      }
+
+      await onUpdate();
+      setIsEditModalOpen(false);
+    } catch (error) {
+      alert(error.message || "Gagal memperbarui karyawan");
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
       <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full border border-slate-200 dark:border-slate-800 p-6 shadow-xl relative animate-in fade-in zoom-in-95 duration-150">
@@ -32,7 +95,7 @@ export default function EditEmployeeModal({
             onClick={() => setIsEditModalOpen(false)}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
-            <X />
+            <X onClick={() => setIsEditModalOpen(false)} />
           </button>
         </div>
 
@@ -140,10 +203,12 @@ export default function EditEmployeeModal({
           {/* Password Baru (min=8) */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-              Ganti Kata Sandi (Kosongkan jika tidak diubah, min. 8 karakter)
+              Kata Sandi (wajib, minimal 8 karakter sesuai backend)
             </label>
             <input
               type="password"
+              minLength={8}
+              required
               value={editFormData.password}
               onChange={(e) =>
                 setEditFormData({

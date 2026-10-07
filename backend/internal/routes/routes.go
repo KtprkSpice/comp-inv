@@ -22,4 +22,10 @@ func SetupRoutes(router *gin.Engine) {
 		employee.PUT("/:id", handler.UpdateEmployee)
 		employee.DELETE("/:id", handler.DeleteEmployee)
 	}
+
+	item := api.Group("/item")
+	{
+		item.POST("/create", handler.CreateItem)
+		item.GET("/get", handler.GetItem)
+	}
 }
