@@ -28,5 +28,6 @@ func SetupRoutes(router *gin.Engine) {
 		item.POST("/create", handler.CreateItem)
 		item.GET("/get", handler.GetItem)
 		item.PUT("/:id", handler.UpdateItem)
+		item.DELETE("/:id", handler.DeleteItem)
 	}
 }

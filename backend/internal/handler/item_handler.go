@@ -114,3 +114,36 @@ func UpdateItem(c *gin.Context) {
 		"data" : item,
 	})
 }
+// End Put
+
+// Start Delte
+func DeleteItem(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusNotFound, gin.H{
+			"message" : "id not found",
+		})
+		return
+	}
+
+	var item models.Item
+	if err := database.DB.First(&item, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"message" : "data not found",
+			"error" : err.Error(),
+		})
+		return
+	}
+
+	if err := database.DB.Delete(&item).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message" : "failed to delete data",
+			"error" : err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK,gin.H{
+		"message" : "item deleted succesfully",
+	})
+}
