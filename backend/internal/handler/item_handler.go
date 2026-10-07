@@ -66,3 +66,51 @@ func GetItem(c *gin.Context) {
 	})
 }
 // End Get
+
+
+// Start PUT
+type UpdateItemRequest struct {
+	Name string `json:"name" binding:"required"`
+	Category string `json:"category" binding:"required"`
+	Stock int32 `json:"stock" binding:"required"`
+}
+
+func UpdateItem(c *gin.Context) {
+	id := c.Param("id")
+	var item models.Item
+
+	if err := database.DB.First(&item, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"message" : "Item Not found",
+		})
+		return
+	}
+
+	var req UpdateItemRequest
+	if err := c.ShouldBindBodyWithJSON(&req); err  != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message" : "Invalid body Request",
+			"error" : err.Error(),
+		})
+		return
+	}
+
+	update := models.Item{
+		Name: req.Name,
+		Category: req.Category,
+		Stock: req.Stock,
+	}
+
+	if err := database.DB.Model(&item).Updates(update).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message" : "failed to update data",
+			"error" : err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message" : "item updated succesfully",
+		"data" : item,
+	})
+}

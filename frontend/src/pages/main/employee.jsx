@@ -19,8 +19,8 @@ import {
   UserX,
   X,
 } from "@boxicons/react";
-import CreateEmployeeModal from "../../components/createEmployeeModal";
-import EditEmployeeModal from "../../components/editEmployeeModal";
+import CreateEmployeeModal from "../../components/EmployeeModal/createEmployeeModal";
+import EditEmployeeModal from "../../components/EmployeeModal/editEmployeeModal";
 import DataTable from "../../components/dataTable";
 
 // Daftar divisi sesuai pemetaan DivisionID (uint)
