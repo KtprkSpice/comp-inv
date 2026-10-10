@@ -19,6 +19,7 @@ import {
   Widget,
 } from "@boxicons/react";
 import DataTable from "../../components/dataTable";
+import ItemModal from "../../components/itemModal";
 const INITIAL_ITEMS = [
   {
     id: "1",
@@ -308,18 +309,10 @@ export default function Inventory() {
             <button
               type="button"
               title="Edit Detail"
-              onClick={() => alert(`Edit barang: ${item.name}`)}
+              onClick={() => openEditItemModal(items)}
               className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <Edit />
-            </button>
-            <button
-              type="button"
-              title="Menu Opsi"
-              onClick={() => alert(`Opsi lainnya untuk SKU: ${item.sku}`)}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-            >
-              <DotsVertical />
             </button>
           </div>
         );
@@ -327,17 +320,8 @@ export default function Inventory() {
     },
   ];
 
-  // 2. Data State & Filter
-
   // 3. Modal Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    sku: "",
-    name: "",
-    spec: "",
-    category: "IT & Hardware",
-    stock: 10,
-  });
 
   // 4. Kalkulasi Metrik Ringkasan
   const metrics = useMemo(() => {
@@ -362,38 +346,45 @@ export default function Inventory() {
     setSelectedStatus("Semua Status");
   };
 
-  // 7. Submit Tambah Barang Baru
-  const handleAddItem = (e) => {
-    e.preventDefault();
-    if (!formData.name.trim() || !formData.sku.trim()) return;
+  // Tesdt
+  const [selectedItem, setSelectedItem] = useState(null);
 
-    const parsedStock = Number(formData.stock) || 0;
-    let computedStatus = "Tersedia";
-    if (parsedStock === 0) computedStatus = "Habis";
-    else if (parsedStock < 10) computedStatus = "Stok Menipis";
+  function openCreateItemModal() {
+    setSelectedItem(null);
+    setIsModalOpen(true);
+  }
 
-    const newItem = {
-      id: String(Date.now()),
-      sku: formData.sku.trim().toUpperCase(),
-      name: formData.name.trim(),
-      spec: formData.spec.trim() || "Spesifikasi inventaris standar kantor",
-      category: formData.category,
-      stock: parsedStock,
-      maxStock: Math.max(parsedStock * 1.5, 30),
-      status: computedStatus,
-    };
+  function openEditItemModal(items) {
+    setSelectedItem(items);
+    setIsModalOpen(true);
+  }
 
-    setItems((prev) => [newItem, ...prev]);
-    setIsModalOpen(false);
-    setFormData({
-      sku: "",
-      name: "",
-      spec: "",
-      category: "IT & Hardware",
-      stock: 10,
+  async function handleSaveItem(form) {
+    const isEdit = Boolean(selectedItem);
+
+    const url = isEdit
+      ? `http://localhost:8080/api/item/${selectedItem.id}`
+      : `http://localhost:8080/api/item/create`;
+
+    const response = await fetch(url, {
+      method: isEdit ? "PUT" : "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(form),
     });
-  };
 
+    const result = await response.json();
+    console.log("Item terpilih:", selectedItem);
+
+    if (!response.ok) {
+      throw new Error(result.error || result.message || "Gagal menyimpan item");
+    }
+
+    await loadItems();
+    setIsModalOpen(false);
+    setSelectedItem(null);
+  }
   // Helper Icon Kategori
   const getCategoryIcon = (category) => {
     switch (category) {
@@ -653,136 +644,14 @@ export default function Inventory() {
 
       {/* Modal Dialog: Tambah Barang Inventaris Baru */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full border border-slate-200 dark:border-slate-800 p-6 shadow-xl relative animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-bold">
-                  <i className="bx bx-plus text-lg"></i>
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Tambah Barang Inventaris
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Masukkan detail aset baru ke dalam database inventaris
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                <i className="bx bx-x text-xl"></i>
-              </button>
-            </div>
-
-            <form onSubmit={handleAddItem} className="space-y-4 mt-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                    Kode / SKU *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.sku}
-                    onChange={(e) =>
-                      setFormData({ ...formData, sku: e.target.value })
-                    }
-                    placeholder="INV-IT-099"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                    Kategori *
-                  </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) =>
-                      setFormData({ ...formData, category: e.target.value })
-                    }
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-                  >
-                    <option value="IT & Hardware">IT & Hardware</option>
-                    <option value="Elektronik">Elektronik</option>
-                    <option value="Furnitur Kantor">Furnitur Kantor</option>
-                    <option value="Aksesoris Komputer">
-                      Aksesoris Komputer
-                    </option>
-                    <option value="Peralatan Kantor">Peralatan Kantor</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                  Nama Barang *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="Contoh: MacBook Pro M2 14 Inch"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                  Spesifikasi &amp; Lokasi Unit
-                </label>
-                <textarea
-                  rows="2"
-                  value={formData.spec}
-                  onChange={(e) =>
-                    setFormData({ ...formData, spec: e.target.value })
-                  }
-                  placeholder="Spesifikasi prosesor, RAM, seri garansi, atau posisi ruang penempatan..."
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-                ></textarea>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                  Jumlah Stok Awal *
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  required
-                  value={formData.stock}
-                  onChange={(e) =>
-                    setFormData({ ...formData, stock: e.target.value })
-                  }
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-semibold shadow-xs hover:bg-slate-800 dark:hover:bg-slate-100 transition-all cursor-pointer"
-                >
-                  Simpan Barang
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <ItemModal
+          item={selectedItem}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedItem(null);
+          }}
+          onSave={handleSaveItem}
+        />
       )}
 
       {/* Universal Footer */}
