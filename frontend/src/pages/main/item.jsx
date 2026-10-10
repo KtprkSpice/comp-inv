@@ -16,6 +16,7 @@ import {
   RefreshCw,
   RotateCw,
   Search,
+  Trash,
   Widget,
 } from "@boxicons/react";
 import DataTable from "../../components/dataTable";
@@ -201,6 +202,29 @@ export default function Inventory() {
     }
   }, [currentPage, totalPages]);
 
+  // Delete item
+  async function delteItem(item) {
+    if (!item?.id) {
+      console.error("id tidak ditemukan", item);
+      return;
+    }
+
+    const confirmation = window.confirm(`Hapus data "${item.name}"?`);
+    if (!confirmation) return;
+
+    const res = await fetch(`http://localhost:8080/api/item/${item.id}`, {
+      method: "DELETE",
+    });
+
+    const result = await res.json();
+
+    if (!res.ok) {
+      throw new Error(result.error || result.message || "Gagal menghapus data");
+    }
+
+    await loadItems();
+  }
+
   // Column
   const col = [
     {
@@ -309,10 +333,18 @@ export default function Inventory() {
             <button
               type="button"
               title="Edit Detail"
-              onClick={() => openEditItemModal(items)}
+              onClick={() => openEditItemModal(item)}
               className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <Edit />
+            </button>
+            <button
+              type="button"
+              title="Edit Detail"
+              onClick={() => delteItem(item)}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <Trash />
             </button>
           </div>
         );
@@ -354,8 +386,8 @@ export default function Inventory() {
     setIsModalOpen(true);
   }
 
-  function openEditItemModal(items) {
-    setSelectedItem(items);
+  function openEditItemModal(item) {
+    setSelectedItem(item);
     setIsModalOpen(true);
   }
 

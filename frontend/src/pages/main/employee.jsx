@@ -15,6 +15,7 @@ import {
   RotateCw,
   Search,
   Sitemap,
+  Trash,
   UserCheck,
   UserX,
   X,
@@ -101,6 +102,31 @@ export default function Employees({ activeMenu = "Karyawan" }) {
   useEffect(() => {
     loadEmployees().catch(() => {});
   }, [loadEmployees]);
+
+  // Deelte Employee
+  async function deleteEmployee(employee) {
+    if (!employee?.id) {
+      console.error("id tidak ditemukan", employee);
+      return;
+    }
+    const confirmed = window.confirm(`hapus data "${employee.fullname}"?`);
+
+    if (!confirmed) return;
+
+    const res = await fetch(
+      `http://localhost:8080/api/employee/${employee.id}`,
+      {
+        method: "DELETE",
+      },
+    );
+    const result = await res.json();
+
+    if (!res.ok) {
+      throw new Error(result.error || result.message || "Error");
+    }
+
+    await loadEmployees();
+  }
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
@@ -272,11 +298,11 @@ export default function Employees({ activeMenu = "Karyawan" }) {
           </button>
           <button
             type="button"
-            onClick={() => alert(`Opsi tambahan untuk ${emp.fullname}`)}
+            onClick={() => deleteEmployee(emp)}
             title="Menu Opsi"
             className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
-            <DotsVertical />
+            <Trash />
           </button>
         </div>
       ),

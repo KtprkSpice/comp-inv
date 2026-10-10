@@ -19,6 +19,10 @@ export default function ItemModal({ item = null, onSave, onClose }) {
     });
   }, [item]);
 
+  function handleChange(e) {
+    const { name, value } = e.target;
+    setForm((current) => ({ ...current, [name]: value }));
+  }
   function handleSubmit(event) {
     event.preventDefault();
 
@@ -63,9 +67,10 @@ export default function ItemModal({ item = null, onSave, onClose }) {
               </label>
               <input
                 type="text"
+                name="name"
                 required
                 value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                onChange={handleChange}
                 placeholder="Contoh: MacBook Pro M2 14 Inch"
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
@@ -76,8 +81,9 @@ export default function ItemModal({ item = null, onSave, onClose }) {
                 Kategori *
               </label>
               <select
+                name="category"
                 value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                onChange={handleChange}
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
               >
                 <option value="IT & Hardware">IT & Hardware</option>
@@ -96,9 +102,10 @@ export default function ItemModal({ item = null, onSave, onClose }) {
             <input
               type="number"
               min="0"
+              name="stock"
               required
               value={form.stock}
-              onChange={(e) => setForm({ ...form, stock: e.target.value })}
+              onChange={handleChange}
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900"
             />
           </div>
