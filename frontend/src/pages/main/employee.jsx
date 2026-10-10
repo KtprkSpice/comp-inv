@@ -26,14 +26,14 @@ import DataTable from "../../components/dataTable";
 
 // Daftar divisi sesuai pemetaan DivisionID (uint)
 export const DIVISIONS = [
-  { id: 1, name: "Divisi 1 • IT & Infrastructure", color: "blue" },
-  { id: 2, name: "Divisi 2 • Logistik & Gudang", color: "indigo" },
-  { id: 3, name: "Divisi 3 • Operasional & Pengadaan", color: "emerald" },
-  { id: 4, name: "Divisi 4 • Keuangan & Akuntansi", color: "amber" },
-  { id: 5, name: "Divisi 5 • Human Resources", color: "purple" },
-  { id: 6, name: "Divisi 6 • Legal & Compliance", color: "slate" },
-  { id: 7, name: "Divisi 7 • Fasilitas & Keamanan", color: "cyan" },
-  { id: 8, name: "Divisi 8 • General Affairs", color: "rose" },
+  { id: 2, name: "Divisi 1 • IT & Infrastructure", color: "blue" },
+  { id: 3, name: "Divisi 2 • Logistik & Gudang", color: "indigo" },
+  { id: 4, name: "Divisi 3 • Operasional & Pengadaan", color: "emerald" },
+  { id: 5, name: "Divisi 4 • Keuangan & Akuntansi", color: "amber" },
+  { id: 6, name: "Divisi 5 • Human Resources", color: "purple" },
+  { id: 7, name: "Divisi 6 • Legal & Compliance", color: "slate" },
+  { id: 8, name: "Divisi 7 • Fasilitas & Keamanan", color: "cyan" },
+  { id: 9, name: "Divisi 8 • General Affairs", color: "rose" },
 ];
 
 // Mock data awal diselaraskan dengan Go struct UpdateEmployeeRequest

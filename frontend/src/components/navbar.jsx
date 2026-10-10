@@ -1,4 +1,5 @@
 import { Moon, Sun, User, Warehouse } from "@boxicons/react";
+import { Link } from "react-router-dom";
 
 export default function Navbar({
   isDark,
@@ -18,23 +19,23 @@ export default function Navbar({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand Logo & Title */}
         <div className="flex items-center gap-8">
-          <div className="flex items-center gap-2.5">
+          <Link className="flex items-center gap-2.5" to={"/"}>
             <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 flex items-center justify-center font-bold">
               <Warehouse />
             </div>
             <span className="font-bold text-base tracking-tight text-slate-900 dark:text-white">
               Company Inventory
             </span>
-          </div>
+          </Link>
 
           {/* Navigasi Utama Desktop */}
           <nav className="hidden md:flex items-center gap-1.5">
             {menuItems.map((item) => {
               const isActive = activeMenu === item.name;
               return (
-                <a
+                <Link
                   key={item.name}
-                  href={item.href}
+                  to={item.href}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     isActive
                       ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm"
@@ -42,7 +43,7 @@ export default function Navbar({
                   }`}
                 >
                   {item.name}
-                </a>
+                </Link>
               );
             })}
           </nav>

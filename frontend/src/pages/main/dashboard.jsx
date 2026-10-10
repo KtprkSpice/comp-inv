@@ -2,6 +2,7 @@ import Navbar from "../../components/navbar";
 import Footer from "../../components/footer";
 import { useEffect, useState } from "react";
 import { ArrowRight, Box, ChartLine, Warehouse } from "@boxicons/react";
+import { Link } from "react-router-dom";
 
 export default function Dashboard() {
   // 1. Mengambil preferensi tema awal dari localStorage atau preferensi OS pengguna
@@ -70,8 +71,8 @@ export default function Dashboard() {
 
             {/* Quick Actions Shortcuts */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto mb-8 text-left">
-              <a
-                href="#inventory"
+              <Link
+                to={"/item"}
                 className="group flex items-center gap-3.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-100/70 dark:hover:bg-slate-800 transition-all cursor-pointer"
               >
                 <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-700/80 flex items-center justify-center text-slate-700 dark:text-slate-200 shadow-2xs group-hover:scale-105 transition-transform">
@@ -86,7 +87,7 @@ export default function Dashboard() {
                   </p>
                 </div>
                 <ArrowRight />
-              </a>
+              </Link>
 
               <a
                 href="#reports"
