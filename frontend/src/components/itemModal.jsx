@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 const EMPTY_FORM = {
   name: "",
-  category: "",
+  category: "IT & Hardware",
   stock: "",
 };
 
@@ -26,11 +26,14 @@ export default function ItemModal({ item = null, onSave, onClose }) {
   function handleSubmit(event) {
     event.preventDefault();
 
-    onSave({
+    const payload = {
       name: form.name.trim(),
       category: form.category,
       stock: Number(form.stock),
-    });
+    };
+
+    // console.log("Payload modal:", payload);
+    onSave(payload);
   }
 
   return (

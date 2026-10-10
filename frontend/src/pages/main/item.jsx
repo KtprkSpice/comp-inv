@@ -21,88 +21,6 @@ import {
 } from "@boxicons/react";
 import DataTable from "../../components/dataTable";
 import ItemModal from "../../components/itemModal";
-const INITIAL_ITEMS = [
-  {
-    id: "1",
-    sku: "INV-IT-001",
-    name: "Laptop ThinkPad T14 Gen 3",
-    spec: "Core i7-1260P • 16GB DDR4 • SSD 512GB NVMe • Garansi Resmi Lenovo",
-    category: "IT & Hardware",
-    stock: 42,
-    maxStock: 50,
-    status: "Tersedia",
-  },
-  {
-    id: "2",
-    sku: "INV-EL-014",
-    name: 'Monitor Dell UltraSharp 27" 4K (U2723QE)',
-    spec: "IPS Black Tech • USB-C Hub 90W PD • 100% sRGB • DisplayPort 1.4",
-    category: "Elektronik",
-    stock: 18,
-    maxStock: 30,
-    status: "Tersedia",
-  },
-  {
-    id: "3",
-    sku: "INV-FN-088",
-    name: "Kursi Ergonomis Mesh Pro",
-    spec: "Lumbar Support Dinamis • 3D Armrest • Gaslift Kelas 4 BIFMA Certified",
-    category: "Furnitur Kantor",
-    stock: 7,
-    maxStock: 25,
-    status: "Stok Menipis",
-  },
-  {
-    id: "4",
-    sku: "INV-AK-023",
-    name: "Keyboard Mekanikal Wireless",
-    spec: "Hot-Swappable Red Switch • Bluetooth 5.2 / 2.4GHz • Layout 75% ANSI",
-    category: "Aksesoris Komputer",
-    stock: 29,
-    maxStock: 40,
-    status: "Tersedia",
-  },
-  {
-    id: "5",
-    sku: "INV-EL-091",
-    name: "Proyektor Epson EB-E01",
-    spec: "3.300 Lumens • Resolusi XGA • Port HDMI / VGA • Ruang Konferensi Lt. 3",
-    category: "Elektronik",
-    stock: 0,
-    maxStock: 15,
-    status: "Habis",
-  },
-  {
-    id: "6",
-    sku: "INV-AK-110",
-    name: "Kabel HDMI 4K Braided 3M",
-    spec: "Ultra High Speed 48Gbps • EARC • Gold Plated Connector • Nylon Braid",
-    category: "Aksesoris Komputer",
-    stock: 85,
-    maxStock: 100,
-    status: "Tersedia",
-  },
-  {
-    id: "7",
-    sku: "INV-PK-005",
-    name: "Printer Canon Pixma G3020",
-    spec: "All-in-One Ink Tank • Wi-Fi Direct Print • Scan Flatbed CIS 600x1200",
-    category: "Peralatan Kantor",
-    stock: 4,
-    maxStock: 20,
-    status: "Stok Menipis",
-  },
-  {
-    id: "8",
-    sku: "INV-FN-012",
-    name: "Meja Kerja Adjustable Elektrik",
-    spec: "Dual-Motor Sit-Stand Desk 160x80cm • Memory Controller LED • Kabel Tray",
-    category: "Furnitur Kantor",
-    stock: 12,
-    maxStock: 20,
-    status: "Tersedia",
-  },
-];
 
 export default function Inventory() {
   // 1. Theme State (Dark / Light Mode)
@@ -172,6 +90,7 @@ export default function Inventory() {
       const matchSearch =
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
         String(item.stock).includes(searchQuery.toLowerCase());
 
       const matchCategory =
@@ -297,24 +216,24 @@ export default function Inventory() {
       header: "Status",
       className: "py-4 px-4 whitespace-nowrap",
       render: (item) => {
-        {
-          item.status === "Tersedia" && (
+        if (item.status === "Tersedia") {
+          return (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
               Tersedia
             </span>
           );
         }
-        {
-          item.status === "Stok Menipis" && (
+        if (item.status === "Stok Menipis") {
+          return (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
               Stok Menipis
             </span>
           );
         }
-        {
-          item.status === "Habis" && (
+        if (item.status === "Habis") {
+          return (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
               <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
               Habis
