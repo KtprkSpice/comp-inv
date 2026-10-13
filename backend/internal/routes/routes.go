@@ -34,7 +34,7 @@ func SetupRoutes(router *gin.Engine) {
 	loan := api.Group("/loan")
 	{
 		loan.POST("/create", handler.CreateLoan)
-		loan.GET("/", handler.GetLoan)
+		loan.GET("/get", handler.GetLoan)
 		loan.PUT("/:id", handler.UpdateLoan)
 		loan.DELETE("/:id", handler.DelteLoan)
 	}

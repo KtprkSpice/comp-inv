@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Navbar from "../../components/navbar";
 import Footer from "../../components/footer";
 import DataTable from "../../components/dataTable";
@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Archive,
   ArrowInLeftSquareHalf,
+  ArrowInUpSquareHalf,
   ArrowRightLeft,
   ArrowToBottom,
   Check,
@@ -237,7 +238,7 @@ export default function LoanManagement() {
   const toggleTheme = () => setIsDark((prev) => !prev);
 
   // 2. Data State & Filter
-  const [loans, setLoans] = useState(INITIAL_LOANS);
+  const [loans, setLoans] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("Semua Status");
   const [selectedDivision, setSelectedDivision] = useState("Semua Divisi");
@@ -253,45 +254,110 @@ export default function LoanManagement() {
     note: "",
   });
 
+  // Get Loans Data
+  const loadLoans = useCallback(async () => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/loan/get`);
+      const res = await response.json();
+
+      if (!response.ok) {
+        throw new Error(res.error || res.message || "Gagal memuat data");
+      }
+
+      const now = new Date();
+      const loanList = (res.data ?? []).map((loan) => {
+        const endTime = new Date(loan.end_time);
+        let status;
+
+        if (loan.status === "Dikembalikan") {
+          status = "Dikembalikan";
+        } else if (endTime < now) {
+          status = "Terlambat";
+        } else {
+          status = "Jatuh Tempo Segera";
+        }
+
+        return {
+          id: loan.id,
+          employee_id: loan.employee_id ?? null,
+          employee: loan.employee ?? null,
+          item_id: loan.item_id ?? null,
+          item: loan.item ?? null,
+          amount: loan.amount ?? null,
+          start_time: loan.start_time ?? null,
+          end_time: loan.end_time ?? null,
+          status,
+        };
+      });
+
+      setLoans(loanList);
+    } catch (error) {
+      console.error("Gagal memuat data:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadLoans();
+  }, [loadLoans]);
+
   // 4. Kalkulasi 4 Metrik Ringkasan
   const metrics = useMemo(() => {
-    const activeLoans = loans.filter((l) => l.status !== "Dikembalikan").length;
-    const dueToday = loans.filter(
-      (l) => l.status === "Jatuh Tempo Segera",
+    const activeLoans = loans.filter((loan) => loan.status !== "Dikembalikan");
+
+    const today = new Date();
+    const dueToday = activeLoans.filter((loan) => {
+      if (!loan.end_time) return false;
+
+      const endDate = new Date(loan.end_time);
+
+      return (
+        endDate.getFullYear() === today.getFullYear() &&
+        endDate.getMonth() === today.getMonth() &&
+        endDate.getDate() === today.getDate()
+      );
+    }).length;
+
+    const overdue = activeLoans.filter(
+      (loan) => loan.status === "Terlambat",
     ).length;
-    const overdue = loans.filter((l) => l.status === "Terlambat").length;
-    const totalUnitsBorrowed = loans
-      .filter((l) => l.status !== "Dikembalikan")
-      .reduce((acc, curr) => acc + Number(curr.amount), 0);
+
+    const totalUnits = activeLoans.reduce(
+      (sum, loan) => sum + (Number(loan.amount) || 0),
+      0,
+    );
 
     return {
-      activeLoans: 24, // Sesuai desain aktual (mock total sistem)
-      dueToday: 5,
-      overdue: 2,
-      totalUnits: 68,
+      activeLoans: activeLoans.length,
+      dueToday,
+      overdue,
+      totalUnits,
     };
   }, [loans]);
 
   // 5. Filter Data
   const filteredLoans = useMemo(() => {
     return loans.filter((loan) => {
+      const query = searchQuery.toLowerCase();
+
+      const employeeName = loan.employee?.fullname ?? "";
+      const itemName = loan.item?.name ?? "";
+      const itemSku = loan.item?.sku ?? "";
+      const refCode = loan.refCode ?? "";
+
       const matchSearch =
-        loan.employee.fullname
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        loan.item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loan.item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loan.refCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        String(loan.id).includes(searchQuery);
+        employeeName.toLowerCase().includes(query) ||
+        itemName.toLowerCase().includes(query) ||
+        itemSku.toLowerCase().includes(query) ||
+        refCode.toLowerCase().includes(query) ||
+        String(loan.id ?? "").includes(query);
+
+      const division = loan.employee?.division?.name ?? "";
+      const matchDivision =
+        selectedDivision === "Semua Divisi" ||
+        division.toLowerCase().includes(selectedDivision.toLowerCase());
 
       const matchStatus =
         selectedStatus === "Semua Status" || loan.status === selectedStatus;
-
-      const matchDivision =
-        selectedDivision === "Semua Divisi" ||
-        loan.employee.division
-          .toLowerCase()
-          .includes(selectedDivision.toLowerCase());
 
       return matchSearch && matchStatus && matchDivision;
     });
@@ -360,17 +426,28 @@ export default function LoanManagement() {
     }
   };
 
+  // Col
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  // Column
+  const paginatedItems = filteredLoans.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+
   const col = [
     {
       key: "employee",
       header: "Peminjam (Employee)",
       className: "py-3.5 px-4 sm:px-6",
       render: (loan) => {
-        const initials = loan.employee.fullname
+        const employee = loan.employee ?? {};
+        const employeeName = employee.fullname ?? "Karyawan tidak ditemukan";
+        const division =
+          typeof employee.division === "string"
+            ? employee.division
+            : (employee.division?.name ?? "—");
+        const initials = employeeName
           .split(" ")
           .map((n) => n[0])
           .slice(0, 2)
@@ -383,17 +460,19 @@ export default function LoanManagement() {
             </div>
             <div>
               <p className="font-semibold text-slate-900 dark:text-white leading-tight">
-                {loan.employee.fullname}
+                {employeeName}
               </p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                {loan.employee.email}
+                {employee.email ?? employee.user?.email ?? "—"}
               </p>
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
-                  {loan.employee.division}
+                  {division}
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">
-                  {loan.employee.empCode}
+                  {employee.empCode ??
+                    employee.employee_code ??
+                    `ID ${loan.employee_id ?? "—"}`}
                 </span>
               </div>
             </div>
@@ -406,16 +485,17 @@ export default function LoanManagement() {
       header: "Barang Inventaris (item)",
       className: "py-3.5 px-4",
       render: (loan) => {
+        const item = loan.item ?? {};
         return (
           <>
             <p className="font-semibold text-slate-900 dark:text-white leading-tight">
-              {loan.item.name}
+              {item.name ?? "Barang tidak ditemukan"}
             </p>
             <p className="text-[11px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">
-              {loan.item.sku}
+              {item.sku ?? `ID ${loan.item_id ?? "—"}`}
             </p>
             <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900/60">
-              {loan.item.category}
+              {item.category ?? "—"}
             </span>
           </>
         );
@@ -580,11 +660,7 @@ export default function LoanManagement() {
       ),
     },
   ];
-
-  const paginatedItems = filteredLoans.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize,
-  );
+  // End Col
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#f8f9ff] dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 transition-colors">
@@ -627,7 +703,7 @@ export default function LoanManagement() {
               }
               className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-all flex items-center gap-2 shadow-xs cursor-pointer"
             >
-              <ArrowToBottom />
+              <ArrowInUpSquareHalf />
               <span>Ekspor Laporan</span>
             </button>
 
