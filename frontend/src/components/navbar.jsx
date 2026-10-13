@@ -10,6 +10,7 @@ export default function Navbar({
     { name: "Dashboard", href: "/" },
     { name: "Karyawan", href: "/employee" },
     { name: "Barang / Inventaris", href: "/item" },
+    { name: "Peminjaman", href: "/loan" },
     { name: "Laporan", href: "#reports" },
     { name: "Pengaturan", href: "#settings" },
   ];
