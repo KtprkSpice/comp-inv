@@ -30,4 +30,12 @@ func SetupRoutes(router *gin.Engine) {
 		item.PUT("/:id", handler.UpdateItem)
 		item.DELETE("/:id", handler.DeleteItem)
 	}
+
+	loan := api.Group("/loan")
+	{
+		loan.POST("/create", handler.CreateLoan)
+		loan.GET("/", handler.GetLoan)
+		loan.PUT("/:id", handler.UpdateLoan)
+		loan.DELETE("/:id", handler.DelteLoan)
+	}
 }
